@@ -1,5 +1,6 @@
 package com.yx.test.zookeeper.consumer;
 
+import org.apache.log4j.Logger;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 
@@ -9,116 +10,115 @@ import java.util.Random;
 /**
  * @Auther: 36560
  * @Date: 2020/3/27 :8:15
- * @Description: zookeeper的监视点
+ * @Description: zookeeper的worker节点
  */
 public class Consumer implements Watcher {
 
-    static ZooKeeper zk ;
-    static String hostPort;
-    static Random random = new Random();
-    static String serverId = Integer.toHexString(random.nextInt());
-    static boolean isLeader = false;
-    static AsyncCallback.StringCallback masterStrinCallBack = new AsyncCallback.StringCallback() {
-        public void processResult(int rc, String path, Object ctx, String name) {
-            switch (KeeperException.Code.get(rc)){
-                case CONNECTIONLOSS:
-                    checkMaster();
-                    return;
-                case OK:
-                    isLeader = true;
-                    break;
-                default:
-                    isLeader =false;
-            }
-            System.out.println("I am "+(isLeader?"":"not")+" the leader");
-        }
-    };
+    private static final Logger log = Logger.getLogger(Consumer.class);
 
-    static AsyncCallback.DataCallback masterCheckCallBack = new AsyncCallback.DataCallback() {
-        public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat) {
-            switch (KeeperException.Code.get(rc)){
-                case CONNECTIONLOSS:
-                    checkMaster();
-                    return;
-                case NONODE:
-                    runForMaster();
-                    return;
+    private ZooKeeper zk;
+    private String hostPort;
+    private Random random = new Random();
+    private String serverId = Integer.toHexString(random.nextInt());
+    private String status;
 
-            }
-        }
-    };
-    /**
-     * 检查是否存在master
-     * @return
-     */
-    static void checkMaster() {
-        zk.getData("/master", false, masterCheckCallBack,null);
-    }
 
-    public Consumer(String hostPort) {
+    Consumer(String hostPort) {
         this.hostPort = hostPort;
     }
 
     void startZk() throws IOException {
-        zk = new ZooKeeper(hostPort,15000,this);
+        zk = new ZooKeeper(hostPort, 15000, this);
     }
 
     void stopZk() throws InterruptedException {
         zk.close();
     }
+
     public void process(WatchedEvent watchedEvent) {
-//        log.info("监听事件");
-        System.out.println(watchedEvent);
+        log.info("监听事件："+watchedEvent);
     }
 
     /**
-     *  尝试获取master节点
+     * 创建worker回调函数
+     * 1.连接丢失：connectionloss 连接丢失的情况下，重新进行注册
+     * 2.注册成功 注册成功则结束
+     * 3.node已注册 已注册的情况下将提示已注册，成功返回
+     * 4.默认情况：未知错误内容
      */
-    static void  runForMaster(){
-        zk.create("/master",serverId.getBytes(),ZooDefs.Ids.OPEN_ACL_UNSAFE,CreateMode.EPHEMERAL,masterStrinCallBack,null);
-    }
-
-    public void bootstrap(){
-        creatParent("/workers",new byte[0]);
-        creatParent("/assign",new byte[0]);
-        creatParent("/tasks",new byte[0]);
-        creatParent("/status",new byte[0]);
-    }
-
-    void creatParent(String path,byte[] data){
-        zk.create(path,data, ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT,createParentCallback,null);
-    }
-
-    AsyncCallback.StringCallback createParentCallback = new AsyncCallback.StringCallback() {
+    AsyncCallback.StringCallback creatWorkerCallBack = new AsyncCallback.StringCallback() {
         public void processResult(int rc, String path, Object ctx, String name) {
-            switch (KeeperException.Code.get(rc)){
+            switch (KeeperException.Code.get(rc)) {
                 case CONNECTIONLOSS:
-                    creatParent(path,(byte[])ctx);
+                    register();
+                    break;
                 case OK:
-                    System.out.println("parent created");
+                    log.info("registered successfully:" + serverId);
                     break;
                 case NODEEXISTS:
-                    System.out.println("parent exist:"+path);
+                    log.warn("already exsits:" + serverId);
                     break;
-                    default:
-                        System.out.println("something was wrong:"+KeeperException.create(KeeperException.Code.get(rc),path));
+                default:
+                    log.error("something went wrong:" + KeeperException.create(KeeperException.Code.get(rc), path));
+            }
+
+        }
+    };
+
+    /**
+     * 注册worker
+     */
+    void register() {
+        zk.create("/worker/worker-" + serverId, "Idle".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL,creatWorkerCallBack,null);
+    }
+
+    /**
+     * 更新状态的回调函数
+     */
+    AsyncCallback.StatCallback statusUpdateCallBack = new AsyncCallback.StatCallback() {
+        public void processResult(int rc, String path, Object ctx, Stat stat) {
+            switch (KeeperException.Code.get(rc)){
+                case CONNECTIONLOSS:
+                    updateStatus((String) ctx);
+                    break;
+                case OK:
+                    log.info("update successfully");
+                    break;
+                default:
+                    log.error("unknown error");
             }
         }
     };
+
+    /**
+     * 更新状态
+     */
+    void updateStatus(String status){
+        if(this.status == status){
+            zk.setData("/worker/"+serverId,status.getBytes(),-1,statusUpdateCallBack,status);
+        }
+    }
+
+    /**
+     * 设置状态入口
+     * @param status
+     */
+    void setStatus(String status){
+        this.status = status;
+    }
+
+    /**
+     * 启动一个worker
+     * @param args
+     * @throws IOException
+     * @throws InterruptedException
+     */
     public static void start(String[] args) throws IOException, InterruptedException {
         Consumer watcher = new Consumer(args[0]);
         watcher.startZk();
-        watcher.runForMaster();
-        if (watcher.isLeader){
-            System.out.println("I am a leader");
-        }else {
-            System.out.println("some else is the leader");
-        }
-        while (true){
-            System.out.println(System.currentTimeMillis());
-            Thread.sleep(60000);
-        }
-//        watcher.stopZk();
+        watcher.register();
+        Thread.sleep(30000);
+        watcher.stopZk();
     }
 }
 

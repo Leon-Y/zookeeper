@@ -9,17 +9,20 @@ import java.util.Random;
 /**
  * @Auther: 36560
  * @Date: 2020/3/27 :8:15
- * @Description: zookeeper的监视点
+ * @Description: zookeeper的监视点-主节点
  */
 public class Master implements Watcher {
 
-    static ZooKeeper zk ;
-    static String hostPort;
-    static Random random = new Random();
-    static String serverId = Integer.toHexString(random.nextInt());
-    static boolean isLeader = false;
+    ZooKeeper zk ;
+    String hostPort;
+    Random random = new Random();
+    String serverId = Integer.toHexString(random.nextInt());
+    boolean isLeader = false;
 
-    static AsyncCallback.StringCallback masterStrinCallBack = new AsyncCallback.StringCallback() {
+    /**
+     * 主节点选举回调
+     */
+    AsyncCallback.StringCallback masterStrinCallBack = new AsyncCallback.StringCallback() {
         public void processResult(int rc, String path, Object ctx, String name) {
             switch (KeeperException.Code.get(rc)){
                 case CONNECTIONLOSS:
@@ -35,7 +38,10 @@ public class Master implements Watcher {
         }
     };
 
-    static AsyncCallback.DataCallback masterCheckCallBack = new AsyncCallback.DataCallback() {
+    /**
+     * 元数据设置回调
+     */
+    AsyncCallback.DataCallback masterCheckCallBack = new AsyncCallback.DataCallback() {
         public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat) {
             switch (KeeperException.Code.get(rc)){
                 case CONNECTIONLOSS:
@@ -48,11 +54,12 @@ public class Master implements Watcher {
             }
         }
     };
+
     /**
      * 检查是否存在master
      * @return
      */
-    static void checkMaster() {
+    void checkMaster() {
         zk.getData("/master", false, masterCheckCallBack,null);
     }
 
@@ -88,7 +95,7 @@ public class Master implements Watcher {
     /**
      *  尝试获取master节点
      */
-    static void  runForMaster(){
+    void  runForMaster(){
         zk.create("/master",serverId.getBytes(),ZooDefs.Ids.OPEN_ACL_UNSAFE,CreateMode.EPHEMERAL,masterStrinCallBack,null);
     }
 
@@ -132,7 +139,7 @@ public class Master implements Watcher {
     };
 
     public static void start(String[] args) throws IOException, InterruptedException {
-        Master watcher = new Master(args[0]);
+        Master watcher = new Master(args[1]);
         watcher.startZk();
         watcher.runForMaster();
         if (watcher.isLeader){
