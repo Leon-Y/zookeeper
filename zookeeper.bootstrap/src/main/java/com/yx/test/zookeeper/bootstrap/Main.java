@@ -30,6 +30,9 @@ public class Main {
         }else if (arg.equals("consumer")){
             log.info("启动消费者");
             Consumer.start(args);
+        }else if (arg.equals("client")){
+            log.info("启动客户端观察者");
+            Consumer.start(args);
         }else {
             log.error("参数错误");
         }
