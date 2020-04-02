@@ -13,14 +13,6 @@
         <module>zookeeper.producer</module>
         <module>zookeeper.bootstrap</module>
     </modules>
-    <dependencies>
-        <dependency>
-            <groupId>log4j</groupId>
-            <artifactId>log4j</artifactId>
-            <version>1.2.17</version>
-            <scope>compile</scope>
-        </dependency>
-    </dependencies>
     <packaging>pom</packaging>
 
 
@@ -48,51 +40,32 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>3.0.2</version>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                            <mainClass>com.yx.test.zookeeper.producer.Producer</mainClass> <!-- 此处为主入口-->
-                        </manifest>
-                    </archive>
-                </configuration>
-            </plugin>
-            <!--<plugin>-->
-            <!--<artifactId>maven-assembly-plugin</artifactId>-->
-            <!--<configuration>-->
-            <!--<archive>-->
-            <!--<manifest>-->
-            <!--<mainClass>com.yx.test.zookeeper.bootstrap.Main</mainClass>  // 根据自己类名和路径修改-->
-            <!--</manifest>-->
-            <!--</archive>-->
-            <!--<descriptorRefs>-->
-            <!--<descriptorRef>jar-with-dependencies</descriptorRef>-->
-            <!--</descriptorRefs>-->
-            <!--</configuration>-->
-            <!--</plugin>-->
-            <plugin>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.1</version>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.1.0</version>
                 <executions>
-                    <execution>
-                        <phase>
-                            package
-                        </phase>
+
+                    <execution><!-- 配置执行器 -->
+                        <id>make-assembly</id>
+                        <!--<phase>package</phase>&lt;!&ndash; 绑定到package生命周期阶段上 &ndash;&gt;-->
                         <goals>
-                            <goal>
-                                shade
-                            </goal>
+                            <goal>single</goal><!-- 只运行一次 -->
                         </goals>
                         <configuration>
-                            <transformers>
-                                <transformer
-                                        implementation="org.apache.maven.plugins.shade.resource.MainfestResourceTransformer">
+                            <finalName>zookeeper</finalName>
+                            <archive>
+                                <manifest>
                                     <mainClass>com.yx.test.zookeeper.bootstrap.Main</mainClass>
-                                </transformer>
-                            </transformers>
+                                    // 根据自己类名和路径修改
+                                </manifest>
+                            </archive>
+
+                            <descriptors>
+                                <descriptor>
+                                    src/main/resources/assembly.xml
+                                </descriptor>
+                            </descriptors><!--配置描述文件路径-->
                         </configuration>
+
                     </execution>
                 </executions>
             </plugin>

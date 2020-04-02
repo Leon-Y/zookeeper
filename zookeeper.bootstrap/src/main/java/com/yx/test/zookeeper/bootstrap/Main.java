@@ -18,6 +18,7 @@ public class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
         if (args.length == 0){
             log.error("请输入启动参数");
+            throw new RuntimeException("请输入启动参数");
         }
         String arg = args[0];
         if(arg.equals("master")){
