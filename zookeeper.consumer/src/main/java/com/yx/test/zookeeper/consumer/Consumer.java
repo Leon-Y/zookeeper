@@ -114,7 +114,7 @@ public class Consumer implements Watcher {
      * @throws InterruptedException
      */
     public static void start(String[] args) throws IOException, InterruptedException {
-        Consumer watcher = new Consumer(args[0]);
+        Consumer watcher = new Consumer(args[1]);
         watcher.startZk();
         watcher.register();
         Thread.sleep(30000);

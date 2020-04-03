@@ -4,7 +4,9 @@ package com.yx.test.zookeeper.bootstrap;
 import com.yx.test.zookeeper.admin.Master;
 import com.yx.test.zookeeper.consumer.Consumer;
 import com.yx.test.zookeeper.producer.Producer;
+import com.yx.test.zookeeper.client.*;
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.KeeperException;
 
 import java.io.IOException;
 
@@ -15,7 +17,7 @@ import java.io.IOException;
  */
 public class Main {
     private static final Logger log =Logger.getLogger(Main.class);
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) throws IOException, InterruptedException, KeeperException {
         if (args.length == 0){
             log.error("请输入启动参数");
             throw new RuntimeException("请输入启动参数");
@@ -32,7 +34,7 @@ public class Main {
             Consumer.start(args);
         }else if (arg.equals("client")){
             log.info("启动客户端观察者");
-            Consumer.start(args);
+            AdminClient.start(args);
         }else {
             log.error("参数错误");
         }

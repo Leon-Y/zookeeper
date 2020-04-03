@@ -12,6 +12,7 @@
         <module>zookeeper.consumer</module>
         <module>zookeeper.producer</module>
         <module>zookeeper.bootstrap</module>
+        <module>zookeeper.client</module>
     </modules>
     <packaging>pom</packaging>
 
