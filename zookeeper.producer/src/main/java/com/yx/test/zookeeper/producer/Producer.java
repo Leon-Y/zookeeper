@@ -39,7 +39,7 @@ public class Producer implements Watcher {
         while (true){
             try {
                 //PERSISTENT_SEQUENTIAL持久的有序节点
-                String name = zk.create("/task/task-", command.getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+                String name = zk.create("/tasks/task-", command.getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
                 return name;
             } catch (KeeperException.NodeExistsException e) {
                 log.warn("node exists:"+command);
